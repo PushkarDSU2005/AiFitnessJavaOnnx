@@ -1,38 +1,26 @@
-# AI Fitness Java ONNX
+# AI Fitness Java + ONNX
 
-Real-time fitness rep counting from webcam video using Java, ONNX Runtime, and JavaCV/OpenCV.
+Real-time fitness rep counting with Java, ONNX Runtime, and JavaCV/OpenCV.
 
-## Overview
-
-This project runs a pose-estimation ONNX model on live webcam frames, draws detected keypoints, and counts upper-body reps based on elbow angle transitions.
-
-Current implementation targets a push-up style motion:
-- `down` when average elbow angle is below 70 degrees
-- `up` when average elbow angle is above 140 degrees
-- rep increments on a `down -> up` transition with a 500 ms cooldown
+This app reads webcam frames, runs pose estimation using `models/pose.onnx`, draws keypoints, and counts reps based on elbow-angle transitions.
 
 ## Features
 
-- Real-time webcam capture and display
-- ONNX Runtime inference in Java
-- Automatic support for model input tensor type:
-- `int32` NHWC input (`[1, H, W, 3]`)
-- `float32` NHWC normalized input (`[1, H, W, 3]`)
-- Keypoint overlay on video frames
-- Live feedback text:
-- elbow angle
-- pose state (`up`/`down`)
-- rep count
-- Quit key binding: press `Q`
+- Live webcam pose tracking
+- ONNX Runtime inference from Java
+- Auto handling for both `int32` and `float32` NHWC model inputs
+- Keypoint overlay and on-screen feedback text
+- Rep counting with debounce protection
+- Quit shortcut: press `Q`
 
 ## Tech Stack
 
 - Java 17
 - Maven
-- JavaCV (`org.bytedeco:javacv-platform`)
-- ONNX Runtime Java (`com.microsoft.onnxruntime:onnxruntime`)
+- JavaCV (`org.bytedeco:javacv-platform:1.5.8`)
+- ONNX Runtime (`com.microsoft.onnxruntime:onnxruntime:1.15.0`)
 
-## Repository Structure
+## Project Structure
 
 ```text
 AiFitnessJavaOnnx/
@@ -44,93 +32,79 @@ AiFitnessJavaOnnx/
 `-- README.md
 ```
 
-## Requirements
+## Prerequisites
 
-- JDK 17+
-- Maven 3.8+
-- Webcam connected/available
-- ONNX model at `models/pose.onnx`
+- JDK 17 or newer
+- Maven 3.8 or newer
+- Working webcam
+- Pose model file at `models/pose.onnx`
 
-## Setup
-
-1. Clone the repository:
+## Quick Start
 
 ```bash
 git clone https://github.com/PushkarDSU2005/AiFitnessJavaOnnx.git
 cd AiFitnessJavaOnnx
-```
-
-2. Build the project:
-
-```bash
 mvn clean compile
-```
-
-## Run
-
-Run with Maven Exec plugin:
-
-```bash
 mvn exec:java
 ```
 
-On launch, a webcam window opens with keypoints and rep feedback.
-Press `Q` in the window to stop.
+When the app starts, a camera window opens with keypoints and rep stats.
 
-## Model Input and Output Assumptions
+## Controls
 
-Configured in `src/main/java/com/example/Main.java`:
+- `Q` -> quit application
+- Closing the camera window also stops execution
 
-- Model path: `models/pose.onnx`
-- Input image size: `192 x 192`
-- Expected keypoints: `17`
+## How Rep Counting Works
 
-Inference output parser currently handles these output shapes:
+- Left elbow angle is computed from keypoints `(5, 7, 9)`
+- Right elbow angle is computed from keypoints `(6, 8, 10)`
+- Average angle is used when both arms are visible
+- Position logic:
+- angle `< 70` -> `down`
+- angle `> 140` -> `up`
+- Rep is counted on `down -> up` transition
+- Cooldown (`500 ms`) prevents double counting
+
+## Model Contract
+
+- Input size: `192 x 192`
+- Keypoints expected: `17`
+- Supported input tensors:
+- `int32` with shape `[1, H, W, 3]`
+- `float32` with shape `[1, H, W, 3]` normalized to `[0, 1]`
+- Supported output parsing:
 - `float[][][][]`
 - `float[][][]`
 - `float[][]`
-
-Each keypoint is interpreted as:
-- `[y, x, score]` with normalized coordinates mapped to camera pixel space
-
-## Rep Counting Logic
-
-Elbow angle is computed using:
-- left arm: keypoints `(5, 7, 9)` -> shoulder, elbow, wrist
-- right arm: keypoints `(6, 8, 10)` -> shoulder, elbow, wrist
-
-State machine:
-- if angle < 70 -> `down`
-- if angle > 140 -> `up`
-- count rep when state changes `down -> up` and at least 500 ms passed since last change
-
-Confidence handling:
-- keypoint score must be greater than `0.2` for angle calculation and drawing
+- Keypoint format is treated as `[y, x, score]`
+- Confidence threshold for drawing and angle logic: `0.2`
 
 ## Troubleshooting
 
-- `Model file not found`:
-- verify `models/pose.onnx` exists and path is correct
-- `No webcam / camera busy`:
-- close apps that are already using camera and rerun
-- `UnsatisfiedLinkError` or native load issues:
-- ensure Java version matches environment and rerun Maven dependency download
-- poor detection quality:
-- improve lighting, adjust camera angle, and keep full upper body visible
+- `Model load error`
+- Verify `models/pose.onnx` exists and is readable
+- `Camera not opening`
+- Check if another app is using webcam
+- `Native library or linkage error`
+- Re-run `mvn clean compile` and confirm Java 17 is active
+- `Pose quality is unstable`
+- Improve lighting and keep full upper body in frame
 
 ## Notes
 
-- `target/` build output is ignored via `.gitignore`.
-- `session_output.mp4` is ignored in git and not required to run the app.
+- `target/` is ignored by `.gitignore`
+- `session_output.mp4` is ignored and not required for runtime
 
-## Future Improvements
+## Roadmap
 
-- Add support for multiple exercise types (squats, curls, shoulder press)
-- Add calibration per user body proportions
-- Export session stats (JSON/CSV)
-- Add unit tests for angle/state logic
-- Add packaged runnable JAR instructions
+- Add multi-exercise modes (push-ups, squats, curls)
+- Add user calibration for better angle thresholds
+- Save session analytics (JSON/CSV)
+- Add unit tests for angle and state transitions
+- Package executable distribution
 
 ## License
 
-No license file is currently included. Add a `LICENSE` file if you want to define reuse terms for this repository.
+No `LICENSE` file is currently present.
+Add one if you want explicit reuse terms.
