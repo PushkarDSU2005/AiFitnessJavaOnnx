@@ -1,0 +1,13 @@
+target/
+
+# IDE/editor files
+.idea/
+.vscode/
+*.iml
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Generated runtime output
+session_output.mp4
